@@ -23,6 +23,7 @@ export default function ProjectionPage() {
   const [showControls, setShowControls] = useState(true);
   const [showGuides, setShowGuides] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const [outlineColor, setOutlineColor] = useState<'white' | 'black'>('white');
   const [outlineReady, setOutlineReady] = useState(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -136,7 +137,7 @@ export default function ProjectionPage() {
 
     // Use white strokes in projection — visible on both black bg and dimmed pattern
     const modifiedSvg = project.outlineSvg
-      .replace(/stroke="#[^"]*"/, 'stroke="#ffffff"')
+      .replace(/stroke="#[^"]*"/, `stroke="${outlineColor === 'white' ? '#ffffff' : '#000000'}"`)
       .replace(/stroke-width="[^"]*"/, `stroke-width="${outlineWidth}"`);
 
     const blob = new Blob([modifiedSvg], { type: 'image/svg+xml' });
@@ -149,7 +150,7 @@ export default function ProjectionPage() {
     };
     img.onerror = () => URL.revokeObjectURL(url);
     img.src = url;
-  }, [project?.outlineSvg, outlineWidth]);
+  }, [project?.outlineSvg, outlineWidth, outlineColor]);
 
   // Render
   const render = useCallback(() => {
@@ -474,6 +475,25 @@ export default function ProjectionPage() {
                   onChange={(e) => setOutlineWidth(Number(e.target.value))}
                   className="tuft-slider w-full"
                 />
+              </div>
+            )}
+
+            {/* Outline color */}
+            {!showRaw && viewMode !== 'pattern' && (
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-2xs text-white/50">Outline color</span>
+                <button
+                  onClick={() => setOutlineColor((c) => c === 'white' ? 'black' : 'white')}
+                  className={`
+                    px-3 py-1 text-2xs font-mono rounded transition-colors
+                    ${outlineColor === 'white'
+                      ? 'bg-white text-black'
+                      : 'bg-black text-white border border-white/30'
+                    }
+                  `}
+                >
+                  {outlineColor === 'white' ? 'White' : 'Black'}
+                </button>
               </div>
             )}
 
