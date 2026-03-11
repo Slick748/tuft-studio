@@ -29,7 +29,7 @@ interface ProjectState {
 
   // Actions — project
   initProject: (image: string) => void;
-  updateSettings: (settings: Partial<Pick<TuftProject, 'width' | 'height' | 'unit' | 'paletteSize' | 'minThickness' | 'regionThreshold' | 'useYarnPalette'>>) => void;
+  updateSettings: (settings: Partial<Pick<TuftProject, 'width' | 'height' | 'unit' | 'paletteSize' | 'minThickness' | 'regionThreshold' | 'useYarnPalette' | 'removeBackground' | 'backgroundColorHex'>>) => void;
   setProcessedResult: (data: {
     processedImage: string;
     palette: TuftColor[];
@@ -58,6 +58,8 @@ const DEFAULT_SETTINGS = {
   minThickness: 5, // mm
   regionThreshold: 0.002, // 0.2%
   useYarnPalette: true,
+  removeBackground: false,
+  backgroundColorHex: '#ffffff',
 };
 
 // ──────────────────────────────────────────────

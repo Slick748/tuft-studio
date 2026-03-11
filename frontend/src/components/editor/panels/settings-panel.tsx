@@ -12,6 +12,7 @@ export function SettingsPanel() {
   const updateSettings = useProjectStore((s) => s.updateSettings);
   const setProcessedResult = useProjectStore((s) => s.setProcessedResult);
   const setProcessingStatus = useProjectStore((s) => s.setProcessingStatus);
+  const setActiveTab = useProjectStore((s) => s.setActiveTab);
   const processingStatus = useProjectStore((s) => s.processingStatus);
   const processingError = useProjectStore((s) => s.processingError);
 
@@ -78,6 +79,7 @@ export function SettingsPanel() {
 
   const handleApply = async () => {
     setProcessingStatus('processing');
+    setActiveTab('palette');
     setPreviewSrc(null);
 
     try {
@@ -90,6 +92,8 @@ export function SettingsPanel() {
         minThickness: project.minThickness,
         regionThreshold: project.regionThreshold,
         useYarnPalette: project.useYarnPalette,
+        removeBackground: project.removeBackground,
+        backgroundColorHex: project.backgroundColorHex,
       });
 
       setProcessedResult({
@@ -188,6 +192,62 @@ export function SettingsPanel() {
             </span>
           </div>
         </button>
+      </Section>
+
+      {/* Background Removal */}
+      <Section title="Background">
+        <button
+          onClick={() => updateSettings({ removeBackground: !project.removeBackground })}
+          className={`
+            w-full flex items-center gap-3 p-3 rounded border transition-all
+            ${project.removeBackground
+              ? 'border-tuft-accent/40 bg-tuft-accent/5'
+              : 'border-tuft-border hover:border-tuft-border-active'
+            }
+          `}
+        >
+          <div
+            className={`
+              w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors
+              ${project.removeBackground
+                ? 'border-tuft-accent bg-tuft-accent'
+                : 'border-tuft-border-active'
+              }
+            `}
+          >
+            {project.removeBackground && (
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M2 5L4.5 7.5L8 3" stroke="#0A0A0A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </div>
+          <div className="text-left">
+            <span className="block text-xs text-tuft-text font-mono">
+              Isolate Subject
+            </span>
+            <span className="block text-2xs text-tuft-text-dim mt-0.5">
+              {project.removeBackground
+                ? 'Removes background, fills with solid color'
+                : 'Process full image as-is'
+              }
+            </span>
+          </div>
+        </button>
+
+        {project.removeBackground && (
+          <div className="mt-2 flex items-center gap-2 px-1">
+            <span className="text-2xs text-tuft-text-dim font-mono">Fill color:</span>
+            <input
+              type="color"
+              value={project.backgroundColorHex}
+              onChange={(e) => updateSettings({ backgroundColorHex: e.target.value })}
+              className="w-6 h-6 rounded border border-tuft-border cursor-pointer bg-transparent"
+            />
+            <span className="text-2xs text-tuft-text-muted font-mono">
+              {project.backgroundColorHex}
+            </span>
+          </div>
+        )}
       </Section>
 
       {/* Palette Size */}

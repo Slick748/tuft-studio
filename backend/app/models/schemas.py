@@ -11,6 +11,8 @@ class ProcessRequest(BaseModel):
     minThickness: float = 5.0  # mm
     regionThreshold: float = 0.005  # 0.5%
     useYarnPalette: bool = False
+    removeBackground: bool = False
+    backgroundColorHex: str = "#ffffff"
 
 
 class TuftColor(BaseModel):

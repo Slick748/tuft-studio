@@ -50,6 +50,10 @@ def process_image(request: ProcessRequest) -> ProcessResponse:
     # 2. Limit resolution (preserve original aspect ratio)
     img_rgb = limit_resolution(img_rgb, max_dim=2000)
 
+    # 2b. Background removal (optional — GrabCut)
+    if request.removeBackground:
+        img_rgb = remove_background(img_rgb, request.backgroundColorHex)
+
     # 3. Pre-quantization smoothing
     img_smoothed = pre_quantization_smooth(img_rgb)
 
@@ -228,6 +232,60 @@ def limit_resolution(img: np.ndarray, max_dim: int = 2000) -> np.ndarray:
         return img
     scale = max_dim / max(h, w)
     return cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+
+
+# ──────────────────────────────────────────────
+# Step 2b: Background Removal (GrabCut)
+# ──────────────────────────────────────────────
+
+def remove_background(img_rgb: np.ndarray, bg_color_hex: str = "#ffffff") -> np.ndarray:
+    """
+    Remove background using OpenCV GrabCut.
+    Uses center 80% as probable foreground, edges as probable background.
+    Replaces background with solid color.
+    """
+    h, w = img_rgb.shape[:2]
+
+    # Parse hex to RGB
+    bg_hex = bg_color_hex.lstrip("#")
+    bg_r = int(bg_hex[0:2], 16)
+    bg_g = int(bg_hex[2:4], 16)
+    bg_b = int(bg_hex[4:6], 16)
+
+    # Convert RGB to BGR for OpenCV
+    img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+
+    # Initialize mask
+    mask = np.zeros((h, w), np.uint8)
+
+    # Define rectangle: center 80% is probable foreground
+    margin_x = int(w * 0.10)
+    margin_y = int(h * 0.10)
+    rect = (margin_x, margin_y, w - 2 * margin_x, h - 2 * margin_y)
+
+    # GrabCut models
+    bgd_model = np.zeros((1, 65), np.float64)
+    fgd_model = np.zeros((1, 65), np.float64)
+
+    # Run GrabCut (5 iterations)
+    try:
+        cv2.grabCut(img_bgr, mask, rect, bgd_model, fgd_model, 5, cv2.GC_INIT_WITH_RECT)
+    except Exception:
+        # If GrabCut fails, return original
+        return img_rgb
+
+    # Create binary mask: foreground = definite fg (1) + probable fg (3)
+    fg_mask = np.where((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD), 1, 0).astype(np.uint8)
+
+    # Smooth the mask edges slightly
+    fg_mask = cv2.GaussianBlur(fg_mask.astype(np.float32), (5, 5), 0)
+
+    # Composite
+    alpha = fg_mask[:, :, np.newaxis]
+    bg = np.full_like(img_rgb, [bg_r, bg_g, bg_b], dtype=np.uint8)
+    composited = (img_rgb * alpha + bg * (1 - alpha)).astype(np.uint8)
+
+    return composited
 
 
 # ──────────────────────────────────────────────

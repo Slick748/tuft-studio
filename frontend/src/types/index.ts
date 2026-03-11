@@ -32,6 +32,8 @@ export interface TuftProject {
   minThickness: number; // mm
   regionThreshold: number; // 0-1 percentage
   useYarnPalette: boolean;
+  removeBackground: boolean;
+  backgroundColorHex: string;
   processedImage?: string; // base64
   processedLayers: Layer[];
   yarnEstimates: YarnEstimate[];
@@ -49,6 +51,8 @@ export interface ProcessRequest {
   minThickness: number;
   regionThreshold: number;
   useYarnPalette: boolean;
+  removeBackground: boolean;
+  backgroundColorHex: string;
 }
 
 export interface ProcessResponse {
