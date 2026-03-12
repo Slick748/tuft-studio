@@ -171,10 +171,10 @@ export function EditorSidebar() {
 
       {/* ── Mobile bottom drawer ── */}
       <div className="md:hidden flex flex-col shrink-0">
-        {/* Backdrop */}
+        {/* Backdrop — tap to close, no dimming */}
         {isOpen && (
           <div
-            className="fixed inset-0 bg-black/40 z-30"
+            className="fixed inset-0 z-30"
             onClick={() => setDrawerHeight(SNAP_CLOSED)}
           />
         )}

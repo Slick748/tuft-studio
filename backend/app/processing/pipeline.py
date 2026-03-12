@@ -74,6 +74,11 @@ def process_image(request: ProcessRequest) -> ProcessResponse:
             segments=segments, seg_colors_lab=seg_colors_lab, seg_sizes=seg_sizes
         )
 
+    # 4b. Merge similar palette colors (prevents near-duplicate colors wasting slots)
+    palette_rgb, labels, color_names = merge_similar_colors(
+        palette_rgb, labels, color_names, min_delta_e=12.0
+    )
+
     # 5. Multi-pass cleanup
     for _ in range(4):
         labels = cleanup_small_regions(labels, threshold_ratio=request.regionThreshold)
@@ -547,6 +552,83 @@ def quantize_to_yarn_palette(
         quantized = selected_rgb[labels].reshape(h, w, 3).astype(np.uint8)
 
     return quantized, selected_rgb, labels_2d, selected_names
+
+# ──────────────────────────────────────────────
+# Step 4b: Merge Similar Palette Colors
+# ──────────────────────────────────────────────
+
+def merge_similar_colors(
+    palette_rgb: np.ndarray,
+    labels: np.ndarray,
+    color_names: list[str],
+    min_delta_e: float = 12.0,
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    """
+    Merge palette colors that are too similar (deltaE < threshold in LAB).
+    The smaller color (fewer pixels) gets absorbed into the larger one.
+    Frees up palette slots so you don't waste them on near-duplicates.
+    """
+    n_colors = len(palette_rgb)
+    if n_colors <= 2:
+        return palette_rgb, labels, color_names
+
+    # Convert palette to LAB
+    palette_lab = cv2.cvtColor(
+        palette_rgb.reshape(1, -1, 3).astype(np.uint8), cv2.COLOR_RGB2LAB
+    ).astype(np.float32).reshape(-1, 3)
+
+    # Count pixels per color
+    pixel_counts = np.bincount(labels.ravel(), minlength=n_colors)
+
+    # Build merge map: each index maps to its final target
+    merge_to = list(range(n_colors))
+
+    # Find pairs to merge (greedy — smallest first)
+    for i in range(n_colors):
+        if merge_to[i] != i:
+            continue  # already merged into something else
+        for j in range(i + 1, n_colors):
+            if merge_to[j] != j:
+                continue
+            delta_e = np.linalg.norm(palette_lab[i] - palette_lab[j])
+            if delta_e < min_delta_e:
+                # Merge smaller into larger
+                if pixel_counts[i] >= pixel_counts[j]:
+                    merge_to[j] = i
+                    pixel_counts[i] += pixel_counts[j]
+                else:
+                    merge_to[i] = j
+                    pixel_counts[j] += pixel_counts[i]
+                    break  # i is now merged, move on
+
+    # Resolve transitive merges
+    for i in range(n_colors):
+        while merge_to[merge_to[i]] != merge_to[i]:
+            merge_to[i] = merge_to[merge_to[i]]
+
+    # Find surviving colors
+    surviving = sorted(set(merge_to))
+    if len(surviving) == n_colors:
+        return palette_rgb, labels, color_names  # nothing to merge
+
+    # Build old→new index mapping
+    new_idx = {}
+    for new_i, old_i in enumerate(surviving):
+        new_idx[old_i] = new_i
+
+    # Remap labels
+    remap = np.zeros(n_colors, dtype=np.int32)
+    for old_i in range(n_colors):
+        target = merge_to[old_i]
+        remap[old_i] = new_idx[target]
+
+    new_labels = remap[labels]
+
+    # Build new palette
+    new_palette = palette_rgb[surviving]
+    new_names = [color_names[i] if i < len(color_names) else '' for i in surviving]
+
+    return new_palette, new_labels, new_names
 
 
 # ──────────────────────────────────────────────
