@@ -146,11 +146,18 @@ export function EditorCanvas() {
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, offX, offY, drawW, drawH);
 
-      // Hide colors
+      // Hide colors — replace with fill color
       if (!showRaw && hiddenColorIds.size > 0 && project.processedImage && project.palette.length > 0) {
         const hiddenRgbs = project.palette
           .filter((c) => hiddenColorIds.has(c.id))
           .map((c) => c.rgb);
+
+        // Parse fill color
+        const fillHex = project.backgroundColorHex || '#ffffff';
+        const fh = fillHex.replace('#', '');
+        const fillR = parseInt(fh.substring(0, 2), 16);
+        const fillG = parseInt(fh.substring(2, 4), 16);
+        const fillB = parseInt(fh.substring(4, 6), 16);
 
         if (hiddenRgbs.length > 0) {
           // Clamp getImageData to canvas bounds
@@ -174,7 +181,9 @@ export function EditorCanvas() {
                   Math.abs(g - hg) <= tol &&
                   Math.abs(b - hb) <= tol
                 ) {
-                  data[i + 3] = 0;
+                  data[i] = fillR;
+                  data[i + 1] = fillG;
+                  data[i + 2] = fillB;
                   break;
                 }
               }
